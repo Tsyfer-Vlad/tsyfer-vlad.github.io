@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Telegram Mini Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #111;
+  color: white;
+  font-family: Arial, sans-serif;
+  touch-action: none;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.lane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 33.33%;
+  border-left: 1px solid #333;
+  border-right: 1px solid #333;
+}
+
+#player {
+  position: absolute;
+  bottom: 20px;
+  width: 50px;
+  height: 50px;
+  background: cyan;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 12px;
+  transition: left 0.15s ease;
+}
+
+.item {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.bonus { background: lime; }
+.obstacle { background: red; }
+
+#score {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 18px;
+}
+
+#finishBtn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 10px 14px;
+  font-size: 16px;
+  background: #0088cc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div class="lane" style="left:0%"></div>
+  <div class="lane" style="left:33.33%"></div>
+  <div class="lane" style="left:66.66%"></div>
+
+  <div id="player"></div>
+  <div id="score">Score: 0</div>
+</div>
+
+<button id="finishBtn">Завершить</button>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<script>
+const player = document.getElementById("player");
+const game = document.getElementById("game");
+const scoreEl = document.getElementById("score");
+const finishBtn = document.getElementById("finishBtn");
+
+let lane = 1;
+let score = 0;
+let speed = 5;
+
+// 📍 обновление позиции игрока
+function updatePlayer() {
+  player.style.left = (lane * 33.33 + 16.66) + "%";
+}
+updatePlayer();
+
+// 🚫 отключаем прокрутку
+document.body.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+
+// 📱 свайпы
+let startX = 0;
+
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+});
+
+document.addEventListener("touchend", e => {
+  let endX = e.changedTouches[0].clientX;
+  let diff = endX - startX;
+
+  if (Math.abs(diff) > 40) {
+    if (diff > 0 && lane < 2) lane++;
+    if (diff < 0 && lane > 0) lane--;
+    updatePlayer();
+  }
+});
+
+// 🧱 генерация объектов
+setInterval(() => {
+  const item = document.createElement("div");
+  const itemLane = Math.floor(Math.random() * 3);
+
+  item.className = "item " + (Math.random() > 0.5 ? "bonus" : "obstacle");
+  item.style.left = (itemLane * 33.33 + 16.66) + "%";
+  item.style.top = "0px";
+
+  game.appendChild(item);
+
+  let pos = 0;
+  const fall = setInterval(() => {
+    pos += speed;
+    item.style.top = pos + "px";
+
+    const playerRect = player.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+
+    // столкновение
+    if (
+      itemRect.bottom > playerRect.top &&
+      itemRect.left < playerRect.right &&
+      itemRect.right > playerRect.left
+    ) {
+      if (item.classList.contains("bonus")) {
+        score++;
+        speed += 0.2; // ускорение
+      } else {
+        score = Math.max(0, score - 1);
+      }
+
+      scoreEl.innerText = "Score: " + score;
+      item.remove();
+      clearInterval(fall);
+    }
+
+    // ушёл за экран
+    if (pos > window.innerHeight) {
+      item.remove();
+      clearInterval(fall);
+    }
+  }, 40);
+}, 1100);
+
+// 📤 отправка результата боту
+finishBtn.onclick = () => {
+  if (window.Telegram?.WebApp) {
+    Telegram.WebApp.sendData(JSON.stringify({ score }));
+    Telegram.WebApp.close();
+  } else {
+    alert("Score: " + score);
+  }
+};
+
+// 📱 Telegram WebApp настройки
+if (window.Telegram?.WebApp) {
+  Telegram.WebApp.expand();
+}
+</script>
+
+</body>
+</html>
