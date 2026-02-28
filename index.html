@@ -26,8 +26,8 @@ body {
   top: 0;
   bottom: 0;
   width: 33.33%;
-  border-left: 1px solid #333;
-  border-right: 1px solid #333;
+  border-left: 1px solid #DCD9CE;
+  border-right: 1px solid #DCD9CE;
 }
 
 #player {
@@ -35,7 +35,7 @@ body {
   bottom: 20px;
   width: 50px;
   height: 50px;
-  background: cyan;
+  background: #DD5E5B;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 12px;
@@ -49,8 +49,8 @@ body {
   border-radius: 50%;
 }
 
-.bonus { background: lime; }
-.obstacle { background: red; }
+.bonus { background: #758575; }
+.obstacle { background: #DD5E5B; }
 
 #score {
   position: absolute;
@@ -87,6 +87,21 @@ body {
   z-index: 100;
   display: none; /* по умолчанию скрыт */
 }
+
+#restartBtn {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 12px 20px;
+  font-size: 18px;
+  background: #0088cc;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  z-index: 101;
+}
 </style>
 </head>
 <body>
@@ -102,6 +117,7 @@ body {
 </div>
 
 <button id="finishBtn">Завершить</button>
+<button id="restartBtn">Резонировать заново!</button>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -111,6 +127,7 @@ const game = document.getElementById("game");
 const scoreEl = document.getElementById("score");
 const finishBtn = document.getElementById("finishBtn");
 const overlay = document.getElementById("gameOverOverlay");
+const restartBtn = document.getElementById("restartBtn");
 
 let lane = 1;
 let score = 0;
@@ -125,7 +142,7 @@ updatePlayer();
 // 🚫 отключаем прокрутку
 document.body.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
 
-// 📱 свайпы
+// 📱 свайпы на мобильных
 let startX = 0;
 document.addEventListener("touchstart", e => startX = e.touches[0].clientX);
 document.addEventListener("touchend", e => {
@@ -136,6 +153,26 @@ document.addEventListener("touchend", e => {
     if (diff < 0 && lane > 0) lane--;
     updatePlayer();
   }
+});
+
+// 🖱 мышь (drag)
+let mouseStartX = null;
+document.addEventListener("mousedown", e => mouseStartX = e.clientX);
+document.addEventListener("mouseup", e => {
+  if (gameOver || mouseStartX === null) return;
+  let diff = e.clientX - mouseStartX;
+  if (diff > 40 && lane < 2) lane++;
+  if (diff < -40 && lane > 0) lane--;
+  updatePlayer();
+  mouseStartX = null;
+});
+
+// ⌨ клавиши стрелок
+document.addEventListener("keydown", e => {
+  if (gameOver) return;
+  if (e.key === "ArrowLeft" && lane > 0) lane--;
+  if (e.key === "ArrowRight" && lane < 2) lane++;
+  updatePlayer();
 });
 
 // 🧱 генерация объектов
@@ -181,7 +218,8 @@ const spawnInterval = setInterval(() => {
       // проверка проигрыша
       if (score < 0) {
         gameOver = true;
-        overlay.style.display = "flex"; // показываем экран Game Over
+        overlay.style.display = "flex";
+        restartBtn.style.display = "block";
       }
     }
 
@@ -201,6 +239,18 @@ finishBtn.onclick = () => {
   } else {
     alert("Score: " + score);
   }
+};
+
+// 🔄 кнопка перезапуска
+restartBtn.onclick = () => {
+  gameOver = false;
+  score = 0;
+  speed = 5;
+  scoreEl.innerText = "Score: 0";
+  overlay.style.display = "none";
+  restartBtn.style.display = "none";
+
+  document.querySelectorAll(".item").forEach(el => el.remove());
 };
 
 if (window.Telegram?.WebApp) {
